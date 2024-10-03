@@ -114,9 +114,8 @@ def process_command(command):
         solve_math_equation(equation)
         return None
 
-    # Handle search-related commands if it's not for translation
-    elif "search" in actual_command or "what is" in actual_command:
-        search_query = actual_command.replace("search for", "").replace("what is", "").strip()
+    elif is_search_related(actual_command):
+        search_query = actual_command.strip()  # Use the entire query as the search term
         search_online(search_query)
         return None
 
@@ -131,6 +130,9 @@ def is_time_related(command):
     keywords = ['time', 'clock', 'hour', 'minutes', 'now']
     return any(keyword in command for keyword in keywords)
 
+def is_search_related(command):
+    search_phrases = ["search for", "what is", "who is", "where is", "how to", "tell me about"]
+    return any(phrase in command for phrase in search_phrases)
 
 # Function to detect if command is date-related
 def is_date_related(command):
