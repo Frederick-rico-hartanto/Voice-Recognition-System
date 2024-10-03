@@ -4,6 +4,9 @@ import subprocess
 import sys
 import webbrowser
 import pyttsx3
+import smtplib
+import requests
+from email.mime.text import MIMEText
 from googletrans import Translator
 from datetime import datetime, timedelta  # For date and time management
 
@@ -12,12 +15,10 @@ from main import open_application
 # Initialize text-to-speech engine
 tts_engine = pyttsx3.init()
 
-
 # Function to speak out text
 def speak(text):
     tts_engine.say(text)
     tts_engine.runAndWait()
-
 
 # Function to recognize speech, listen for wake word and full command in one step
 def recognize_wake_and_command(prompt="Listening...", language="en-US"):
@@ -80,6 +81,27 @@ def process_command(command):
     elif is_date_related(actual_command):
         handle_date_command(actual_command)
 
+    elif "call" in actual_command or "message" in actual_command:
+        handle_call_message(actual_command)
+
+    elif "email" in actual_command:
+        handle_email(actual_command)
+
+    elif "reminder" in actual_command or "calendar" in actual_command:
+        handle_reminder_or_calendar(actual_command)
+
+    elif "alarm" in actual_command or "timer" in actual_command:
+        handle_alarm_timer(actual_command)
+
+    elif "note" in actual_command or "list" in actual_command:
+        handle_notes_or_lists(actual_command)
+
+    elif "weather" in actual_command:
+        handle_weather(actual_command)
+
+    elif "convert" in actual_command:
+        handle_unit_conversion(actual_command)
+
     elif "open" in actual_command and ("folder" in actual_command or "file" in actual_command):
         if "in desktop" in actual_command:
             folder_name = actual_command.replace("open the folder", "").replace("in desktop", "").strip()
@@ -130,23 +152,126 @@ def is_time_related(command):
     keywords = ['time', 'clock', 'hour', 'minutes', 'now']
     return any(keyword in command for keyword in keywords)
 
-def is_search_related(command):
-    search_phrases = ["search for", "what is", "who is", "where is", "how to", "tell me about"]
-    return any(phrase in command for phrase in search_phrases)
 
 # Function to detect if command is date-related
 def is_date_related(command):
     keywords = ['date', 'day', 'today', 'tomorrow', 'yesterday', 'week', 'month', 'year']
     return any(keyword in command for keyword in keywords)
 
-# Function to check if a command is translation-related
+
+# Function to detect if a command is translation-related
 def is_translation_related(command):
     return "in" in command and not any(char.isdigit() for char in command)  # No digits means it's likely translation
 
-# Function to check if a command is math-related
+
+# Function to detect if a command is math-related
 def is_math_related(command):
     math_symbols = ['+', '-', '*', '/', '=', '^']  # List of symbols to check for math operations
     return any(symbol in command for symbol in math_symbols) or any(char.isdigit() for char in command)
+
+
+# Function to detect if command is search-related
+def is_search_related(command):
+    search_phrases = ["search for", "what is", "who is", "where is", "how to", "tell me about"]
+    return any(phrase in command for phrase in search_phrases)
+
+
+# Function to handle phone calls and messages
+def handle_call_message(command):
+    if "call" in command:
+        person = command.replace("call", "").strip()
+        speak(f"Calling {person}...")
+        # Implement phone call logic using Twilio or similar API if needed.
+    elif "message" in command:
+        person = command.replace("message", "").strip().split("to")[1]
+        speak(f"Messaging {person}...")
+        # Implement message sending logic with Twilio or similar API.
+
+
+# Function to handle email
+def handle_email(command):
+    subject = command.split("email")[1].strip()
+    speak("Please speak the message.")
+    message_body = recognize_wake_and_command(prompt="Listening for your message...")
+    if message_body:
+        send_email(subject, message_body)
+
+
+# Function to send email via SMTP
+def send_email(subject, body):
+    sender = "your-email@example.com"
+    recipient = "recipient@example.com"
+    msg = MIMEText(body)
+    msg['Subject'] = subject
+    msg['From'] = sender
+    msg['To'] = recipient
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(sender, "your-password")
+        server.sendmail(sender, recipient, msg.as_string())
+        server.quit()
+        speak("Email sent successfully.")
+    except Exception as e:
+        speak("Error sending email.")
+
+
+# Function to handle calendar and reminders
+def handle_reminder_or_calendar(command):
+    if "reminder" in command:
+        reminder = command.replace("remind me to", "").strip()
+        speak(f"Reminder set for: {reminder}")
+        # Implement reminder logic using calendar API or task scheduler.
+    elif "calendar" in command:
+        event = command.replace("add to calendar", "").strip()
+        speak(f"Adding event to your calendar: {event}")
+        # Integrate with Google Calendar API or local calendar.
+
+
+# Function to handle alarms, timers, and clock
+def handle_alarm_timer(command):
+    if "alarm" in command:
+        time = command.split("alarm for")[1].strip()
+        speak(f"Setting alarm for {time}.")
+        # Implement alarm logic
+    elif "timer" in command:
+        duration = command.split("timer for")[1].strip()
+        speak(f"Setting a timer for {duration}.")
+        # Implement timer logic
+
+
+# Function to handle notes and lists
+def handle_notes_or_lists(command):
+    if "note" in command:
+        note = command.replace("note", "").strip()
+        speak(f"Adding note: {note}")
+        # Save note in a local file or note-taking app
+    elif "list" in command:
+        list_item = command.replace("add", "").strip()
+        speak(f"Adding {list_item} to your list.")
+        # Add to a list (local or synced to app)
+
+
+# Function to handle weather updates
+def handle_weather(command):
+    city = command.replace("weather in", "").strip()
+    api_key = "your_openweather_api_key"
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}"
+    response = requests.get(url).json()
+    if response["cod"] == 200:
+        weather_description = response["weather"][0]["description"]
+        temp = response["main"]["temp"] - 273.15  # Convert Kelvin to Celsius
+        speak(f"The weather in {city} is {weather_description} with a temperature of {temp:.2f}°C.")
+    else:
+        speak("Sorry, I couldn't get the weather information.")
+
+
+# Function to handle unit conversions
+def handle_unit_conversion(command):
+    # Example: "convert 10 dollars to euros"
+    speak("Unit conversion is not yet implemented.")
+    # Integrate currency or unit conversion APIs.
+
 
 # Function to handle time-related commands
 def handle_time_command(command):
