@@ -1,5 +1,6 @@
 import pyttsx3
 from gtts import gTTS
+from googletrans import Translator
 import os
 import io
 import pygame
@@ -10,7 +11,6 @@ tts_engine = pyttsx3.init()
 # Initialize pygame mixer for audio playback
 pygame.mixer.init()
 
-
 # Function to use pyttsx3 for speaking Latin-based languages
 def pyttsx_speak(text):
     try:
@@ -18,7 +18,6 @@ def pyttsx_speak(text):
         tts_engine.runAndWait()
     except Exception as e:
         print(f"Error with pyttsx3 TTS: {e}")
-
 
 # Function to use gTTS for speaking non-Latin languages (like Chinese, Japanese)
 def speak_multilingual(text, lang='en'):
@@ -40,24 +39,38 @@ def speak_multilingual(text, lang='en'):
         print(f"Error with gTTS: {e}")
         pyttsx_speak("Sorry, I can't pronounce that.")
 
+# Function to translate text to the desired language using googletrans
+def translate_phrase(phrase, lang='en'):
+    translator = Translator()
+    try:
+        # Perform the translation
+        translated = translator.translate(phrase, dest=lang)
+        return translated.text  # Removed print statement
+    except Exception as e:
+        print(f"Error translating phrase: {e}")
+        return phrase  # In case of failure, return the original phrase
 
-# Main function to decide which TTS engine to use based on the language
-def speak(text, lang='en'):
-    # Use gTTS for non-Latin languages (Chinese, Japanese, etc.)
-    if lang in ['zh-cn', 'zh-tw', 'ja', 'ko']:  # Mandarin, Traditional Chinese, Japanese, Korean
-        speak_multilingual(text, lang)
+# Main function to handle translation and speaking
+def speak(text, target_language_code='en'):
+    # First, translate the text into the target language
+    translated_text = translate_phrase(text, target_language_code)
+
+    # Next, speak the translated text based on the language
+    if target_language_code in ['zh-cn', 'zh-tw', 'ja', 'ko']:  # Non-Latin languages
+        speak_multilingual(translated_text, target_language_code)
     else:
-        # Use pyttsx3 for Latin-based languages
-        pyttsx_speak(text)
-
+        pyttsx_speak(translated_text)  # Latin-based languages use pyttsx3
 
 # Example usage
 if __name__ == "__main__":
-    # Test with Simplified Chinese (handled by gTTS)
-    speak("你好", lang='zh-cn')
+    # Translate and speak in Simplified Chinese (Mandarin)
+    speak("Hello, how are you?", 'zh-cn')
 
-    # Test with Japanese (handled by gTTS)
-    speak("こんにちは", lang='ja')
+    # Translate and speak in Japanese
+    speak("Good morning", 'ja')
 
-    # Test with English (handled by pyttsx3)
-    speak("Hello, how are you?", lang='en')
+    # Translate and speak in Korean
+    speak("Thank you", 'ko')
+
+    # Translate and speak in English (Latin-based language, will use pyttsx3)
+    speak("Good afternoon", 'en')
