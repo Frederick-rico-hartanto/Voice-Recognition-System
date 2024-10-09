@@ -1,3 +1,4 @@
+import re
 from utils.speak import speak
 from utils.command_recognition import recognize_wake_and_command, is_time_related, is_date_related, is_search_related, \
     is_translation_related, is_math_related
@@ -8,6 +9,7 @@ from handlers.alarm_timer_handler import handle_alarm_timer
 from handlers.notes_list_handler import handle_notes_or_lists
 from handlers.weather_handler import handle_weather
 from handlers.unit_conversion_handler import handle_unit_conversion
+from handlers.currency_conversion import convert_currency  # Import currency conversion function
 from utils.time_date_handler import handle_time_command, handle_date_command
 from handlers.search_handler import search_online
 from handlers.translation_handler import translate_phrase, extract_translation
@@ -24,81 +26,130 @@ def is_wake_word_detected(command):
     return False, None
 
 
+# Helper function to parse and detect conversions in natural language
+def parse_conversion_command(command):
+    # Match patterns like "what is 100 usd to eur", "how much is 5 kg in g"
+    unit_conversion_pattern = r'what\s+is\s+(\d+)\s+([\w]+)\s+(to|in)\s+([\w]+)'
+    currency_conversion_pattern = r'(how\s+much|what\s+is)\s+(\d+)\s+([\w]{3})\s+(to|in)\s+([\w]{3})'
+
+    # Check if it matches currency conversion (prioritize currencies first)
+    currency_match = re.search(currency_conversion_pattern, command, re.IGNORECASE)
+    if currency_match:
+        amount = float(currency_match.group(2))
+        from_currency = currency_match.group(3)
+        to_currency = currency_match.group(5)
+        return "currency", amount, from_currency, to_currency
+
+    # Check if it matches unit conversion
+    unit_match = re.search(unit_conversion_pattern, command, re.IGNORECASE)
+    if unit_match:
+        amount = float(unit_match.group(1))
+        from_unit = unit_match.group(2)
+        to_unit = unit_match.group(4)
+        return "unit", amount, from_unit, to_unit
+
+    return None, None, None, None
+
+
+# Main function to process commands
 def process_command(command):
-    # Check if the command is translation-related first to prioritize translations over searches
-    if is_translation_related(command):
-        phrase, lang = extract_translation(command)
-        translate_phrase(phrase, lang)
+    # Normalize the command (convert to lowercase, strip spaces)
+    command = command.lower().strip()
 
-    # Handle calling or messaging tasks
-    elif "call" in command or "message" in command:
-        handle_call_message(command)
+    # First, try parsing it as a potential conversion
+    conversion_type, amount, from_unit, to_unit = parse_conversion_command(command)
+    if conversion_type == "currency":
+        # Handle currency conversion
+        convert_currency(amount, from_unit, to_unit)
+        return
+    elif conversion_type == "unit":
+        # Handle unit conversion
+        handle_unit_conversion(f"convert {amount} {from_unit} to {to_unit}")
+        return
 
-    # Handle email
-    elif "email" in command:
-        handle_email(command)
+    try:
+        # Check if the command is translation-related
+        if is_translation_related(command):
+            phrase, lang = extract_translation(command)
+            translate_phrase(phrase, lang)
 
-    # Handle reminders or calendar
-    elif "reminder" in command or "calendar" in command:
-        handle_reminder_or_calendar(command)
+        # Handle calling or messaging tasks
+        elif "call" in command or "message" in command:
+            handle_call_message(command)
 
-    # Handle alarms or timers
-    elif "alarm" in command or "timer" in command:
-        handle_alarm_timer(command)
+        # Handle email
+        elif "email" in command:
+            handle_email(command)
 
-    # Handle notes or lists
-    elif "note" in command or "list" in command:
-        handle_notes_or_lists(command)
+        # Handle reminders or calendar
+        elif "reminder" in command or "calendar" in command:
+            handle_reminder_or_calendar(command)
 
-    # Handle weather
-    elif "weather" in command:
-        handle_weather(command)
+        # Handle alarms or timers
+        elif "alarm" in command or "timer" in command:
+            handle_alarm_timer(command)
 
-    # Handle unit conversion
-    elif "convert" in command:
-        handle_unit_conversion(command)
+        # Handle notes or lists
+        elif "note" in command or "list" in command:
+            handle_notes_or_lists(command)
 
-    # Handle math-related commands
-    elif is_math_related(command):
-        equation = extract_equation(command)
-        solve_math_equation(equation)
+        # Handle weather
+        elif "weather" in command:
+            handle_weather(command)
 
-    # Handle time-related commands
-    elif is_time_related(command):
-        handle_time_command(command)
+        # Handle math-related commands
+        elif is_math_related(command):
+            equation = extract_equation(command)
+            solve_math_equation(equation)
 
-    # Handle date-related commands
-    elif is_date_related(command):
-        handle_date_command(command)
+        # Handle time-related commands
+        elif is_time_related(command):
+            handle_time_command(command)
 
-    # Handle search-related commands (should come last, after translation is checked)
-    elif is_search_related(command):
-        search_online(command)
+        # Handle date-related commands
+        elif is_date_related(command):
+            handle_date_command(command)
 
-    elif "open" in command:
-        app_name = command.replace("open", "").strip()
-        open_app(app_name)  # Open any app
+        # Handle search-related commands (should come last, after translation is checked)
+        elif is_search_related(command):
+            search_online(command)
 
-    # If the command is not recognized
-    else:
-        speak("Command not recognized.")
+        # Handle opening apps
+        elif "open" in command:
+            app_name = command.replace("open", "").strip()
+            open_app(app_name)
+
+        # If the command is not recognized
+        else:
+            speak("Command not recognized.")
+    except Exception as e:
+        speak("An error occurred while processing the command.")
+        print(f"Error: {e}")
 
 
 # Main loop with wake word detection
 if __name__ == "__main__":
-    while True:
-        # Recognize wake word and full command
-        command = recognize_wake_and_command(prompt="Listening for your command with wake word...")
-        if command:
-            # Check if the wake word is detected
-            wake_detected, actual_command = is_wake_word_detected(command)
-            if wake_detected:
-                # Process the actual command without the wake word
-                process_command(actual_command)
-            else:
-                speak("Please start with 'Hey Bella' or 'Okay Bella'.")
+    try:
+        while True:
+            # Recognize wake word and full command
+            command = recognize_wake_and_command(prompt="Listening for your command with wake word...")
 
-            # Exit condition
-            if "quit" in command or "exit" in command:
-                speak("Exiting voice assistant.")
-                break
+            if command:
+                # Check if the wake word is detected
+                wake_detected, actual_command = is_wake_word_detected(command)
+
+                if wake_detected:
+                    # Process the actual command without the wake word
+                    process_command(actual_command)
+                else:
+                    speak("Please start with 'Hey Bella' or 'Okay Bella'.")
+
+                # Exit condition
+                if "quit" in command or "exit" in command:
+                    speak("Exiting voice assistant.")
+                    break
+    except KeyboardInterrupt:
+        speak("Voice assistant stopped.")
+    except Exception as e:
+        speak("An error occurred in the main loop.")
+        print(f"Main loop error: {e}")

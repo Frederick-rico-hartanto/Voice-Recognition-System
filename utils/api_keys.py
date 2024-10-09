@@ -1,2 +1,3 @@
 # Store API keys in a central location
 OPEN_WEATHER_API_KEY = "3723fa0e142a143e937e8976b1376bf9"
+CURRENCY_API_KEY = "d4d54616e49ff713fac07c73"
