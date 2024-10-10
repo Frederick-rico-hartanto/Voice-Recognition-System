@@ -1,4 +1,5 @@
 import re
+import time
 from utils.speak import speak
 from utils.command_recognition import recognize_wake_and_command, is_time_related, is_date_related, is_search_related, \
     is_translation_related, is_math_related
@@ -127,25 +128,47 @@ def process_command(command):
         print(f"Error: {e}")
 
 
-# Main loop with wake word detection
+# Main loop with wake word detection and delayed command after wake word
 if __name__ == "__main__":
+    wake_detected = False  # Track if wake word is detected
+    last_wake_time = 0  # Track the time of the last wake word detection
+    command_timeout = 60  # 1 minute to listen for a command after wake word
+
     try:
         while True:
-            # Recognize wake word and full command
-            command = recognize_wake_and_command(prompt="Listening for your command with wake word...")
+            if not wake_detected:
+                # Recognize wake word and full command
+                command = recognize_wake_and_command(prompt="Listening for your command with wake word...")
+                if command:
+                    # Check if the wake word is detected
+                    wake_detected, actual_command = is_wake_word_detected(command)
 
-            if command:
-                # Check if the wake word is detected
-                wake_detected, actual_command = is_wake_word_detected(command)
+                    if wake_detected:
+                        if actual_command:
+                            # Process the actual command if it comes with the wake word
+                            process_command(actual_command)
+                            wake_detected = False  # Reset after processing
+                        else:
+                            # No command with wake word, prompt the user
+                            speak("What can I help you with?")
+                            last_wake_time = time.time()  # Set the time when wake word was detected
+            else:
+                # After wake word detected, wait for a command within the timeout period
+                if time.time() - last_wake_time < command_timeout:
+                    # Recognize command without wake word (since wake word already detected)
+                    command = recognize_wake_and_command(prompt="Listening for your command...")
 
-                if wake_detected:
-                    # Process the actual command without the wake word
-                    process_command(actual_command)
+                    if command:
+                        # Process the command without requiring wake word
+                        process_command(command)
+                        wake_detected = False  # Reset wake word detection after processing
                 else:
-                    speak("Please start with 'Hey Bella' or 'Okay Bella'.")
+                    # Timeout after 1 minute of waiting
+                    speak("No command received. Listening for the wake word again.")
+                    wake_detected = False  # Reset wake word detection
 
                 # Exit condition
-                if "quit" in command or "exit" in command:
+                if command and ("quit" in command or "exit" in command):
                     speak("Exiting voice assistant.")
                     break
     except KeyboardInterrupt:

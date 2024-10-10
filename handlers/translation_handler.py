@@ -1,5 +1,9 @@
 from googletrans import Translator
+from gtts import gTTS
+import os
+import pygame
 from utils.speak import speak
+import re
 
 # Complete list of Google Translate supported language codes mapped to common language names
 language_map = {
@@ -111,40 +115,78 @@ language_map = {
     'zulu': 'zu',
 }
 
+# Initialize pygame for sound playing
+pygame.mixer.init()
 
 # Improved function to extract the phrase and language for translation
 def extract_translation(command):
     command = command.lower().strip()  # Normalize case and strip leading/trailing spaces
 
-    # Check for keywords like "translate" or "what is"
-    if "translate" in command:
-        command = command.replace("translate", "").strip()
-    if "what is" in command:
-        command = command.replace("what is", "").strip()
+    # Regex patterns to handle various translation phrases
+    translation_patterns = [
+        r"translate\s+(.+?)\s+to\s+(.+)",  # Translate X to Y
+        r"what\s+is\s+(.+?)\s+in\s+(.+)",  # What is X in Y
+        r"how\s+do\s+you\s+say\s+(.+?)\s+in\s+(.+)"  # How do you say X in Y
+    ]
 
-    # Split the phrase from the language using "in"
-    if " in " in command:
-        parts = command.split(" in ")
-        phrase = parts[0].strip()
-        lang = parts[1].strip().lower()
+    for pattern in translation_patterns:
+        match = re.search(pattern, command, re.IGNORECASE)
+        if match:
+            phrase = match.group(1).strip()
+            lang = match.group(2).strip().lower()
+            # Map the language to a language code (if possible)
+            lang_code = language_map.get(lang, lang)
+            return phrase, lang_code
 
-        # Map the language to a language code (if possible)
-        lang_code = language_map.get(lang, lang)
-        return phrase, lang_code
-    else:
-        # If "in" is missing, assume English as the target language
-        return command, 'en'
+    # Fallback if no match found
+    return command, 'en'  # Default to English if no specific language is found
 
-# Function to translate a given phrase using googletrans
+
+# Function to ensure pygame mixer is initialized
+def init_pygame_mixer():
+    if not pygame.mixer.get_init():
+        pygame.mixer.init()
+
+# Function to translate and pronounce a given phrase using googletrans and gTTS
 def translate_phrase(phrase, lang='en'):
     translator = Translator()
     try:
         # Perform translation using googletrans
         translated = translator.translate(phrase, dest=lang)
-        print(f"Translation: {translated.text}")
-        speak(f"Translation: {translated.text}")
-        return translated.text
+        translated_text = translated.text
+        print(f"Translation: {translated_text}")
+        speak(f"Translation: {translated_text}")
+
+        # Pronounce the translated text in the respective language using gTTS
+        tts = gTTS(text=translated_text, lang=lang)
+        tts.save("translated_speech.mp3")
+
+        # Ensure pygame mixer is initialized before trying to play audio
+        init_pygame_mixer()
+
+        # Play the saved audio file using pygame
+        pygame.mixer.music.load("translated_speech.mp3")
+        pygame.mixer.music.play()
+
+        # Wait for the sound to finish playing and ensure pygame releases the file
+        while pygame.mixer.music.get_busy():
+            continue
+
+        # Stop the mixer and release resources
+        pygame.mixer.music.stop()
+
+        # Retry deleting the file after ensuring no process is using it
+        if os.path.exists("translated_speech.mp3"):
+            try:
+                os.remove("translated_speech.mp3")
+            except PermissionError:
+                print("File is still in use. Retrying deletion in 2 seconds.")
+                pygame.time.wait(2000)  # Wait 2 seconds before trying again
+                os.remove("translated_speech.mp3")
+
+        return translated_text
+
     except Exception as e:
-        print(f"Error translating phrase: {e}")
-        speak("Error translating the phrase. Please check your network or the language code.")
+        print(f"Error translating or pronouncing phrase: {e}")
+        speak("Error translating or pronouncing the phrase. Please check your network or the language code.")
         return None
