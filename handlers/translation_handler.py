@@ -1,9 +1,18 @@
+import re
 from googletrans import Translator
 from gtts import gTTS
 import os
 import pygame
+import time  # Make sure this is imported
 from utils.speak import speak
-import re
+from gtts.lang import tts_langs
+
+# Print available languages for gTTS for reference
+available_gtts_langs = tts_langs()
+print("Available gTTS languages:", available_gtts_langs)
+
+# Initialize pygame for sound playing
+pygame.mixer.init()
 
 # Complete list of Google Translate supported language codes mapped to common language names
 language_map = {
@@ -22,7 +31,7 @@ language_map = {
     'mandarin': 'zh-cn',  # Simplified Chinese (Mandarin)
     'simplified chinese': 'zh-cn',
     'traditional chinese': 'zh-tw',
-    'chinese': 'zh-cn',  # Default to Simplified Chinese
+    'chinese': 'zh-cn',  # Default to Simplified Chinese for Google Translate
     'corsican': 'co',
     'croatian': 'hr',
     'czech': 'cs',
@@ -115,16 +124,15 @@ language_map = {
     'zulu': 'zu',
 }
 
-# Initialize pygame for sound playing
-pygame.mixer.init()
-
-# Improved function to extract the phrase and language for translation
+# Function to extract the phrase and language for translation
 def extract_translation(command):
     command = command.lower().strip()  # Normalize case and strip leading/trailing spaces
+    print(f"Command received: {command}")  # Debugging statement
 
     # Regex patterns to handle various translation phrases
     translation_patterns = [
         r"translate\s+(.+?)\s+to\s+(.+)",  # Translate X to Y
+        r"translate\s+(.+?)\s+in\s+(.+)",  # Translate X in Y
         r"what\s+is\s+(.+?)\s+in\s+(.+)",  # What is X in Y
         r"how\s+do\s+you\s+say\s+(.+?)\s+in\s+(.+)"  # How do you say X in Y
     ]
@@ -134,23 +142,27 @@ def extract_translation(command):
         if match:
             phrase = match.group(1).strip()
             lang = match.group(2).strip().lower()
+            print(f"Matched phrase: {phrase}, language: {lang}")  # Debugging statement
             # Map the language to a language code (if possible)
             lang_code = language_map.get(lang, lang)
+            print(f"Language code: {lang_code}")  # Debugging statement
             return phrase, lang_code
 
     # Fallback if no match found
-    return command, 'en'  # Default to English if no specific language is found
-
-
-# Function to ensure pygame mixer is initialized
-def init_pygame_mixer():
-    if not pygame.mixer.get_init():
-        pygame.mixer.init()
+    print("No matching pattern found.")  # Debugging statement
+    return None, None  # Return None if no valid pattern is found
 
 # Function to translate and pronounce a given phrase using googletrans and gTTS
-def translate_phrase(phrase, lang='en'):
+def translate_phrase(phrase, lang):
     translator = Translator()
     try:
+        # Convert language codes between Google Translate and gTTS if necessary
+        gtts_lang = lang
+        if lang == 'zh-cn':
+            gtts_lang = 'zh'  # Simplified Chinese for gTTS
+        elif lang == 'zh-tw':
+            gtts_lang = 'zh-tw'  # Traditional Chinese for gTTS
+
         # Perform translation using googletrans
         translated = translator.translate(phrase, dest=lang)
         translated_text = translated.text
@@ -158,35 +170,53 @@ def translate_phrase(phrase, lang='en'):
         speak(f"Translation: {translated_text}")
 
         # Pronounce the translated text in the respective language using gTTS
-        tts = gTTS(text=translated_text, lang=lang)
+        if gtts_lang not in available_gtts_langs:
+            print(f"Language '{gtts_lang}' is not supported by gTTS. Falling back to English.")
+            speak(f"Sorry, pronunciation in {gtts_lang} is not available.")
+            return translated_text
+
+        tts = gTTS(text=translated_text, lang=gtts_lang)
+
+        # Check if gTTS supports the language
+        print(f"Language code for gTTS: {gtts_lang}")
+
+        # Save the mp3 file
         tts.save("translated_speech.mp3")
 
         # Ensure pygame mixer is initialized before trying to play audio
-        init_pygame_mixer()
+        if init_pygame_mixer():
+            # Play the saved audio file using pygame
+            pygame.mixer.music.load("translated_speech.mp3")
+            pygame.mixer.music.play()
 
-        # Play the saved audio file using pygame
-        pygame.mixer.music.load("translated_speech.mp3")
-        pygame.mixer.music.play()
+            # Wait for the sound to finish playing and ensure pygame releases the file
+            while pygame.mixer.music.get_busy():
+                time.sleep(0.1)
 
-        # Wait for the sound to finish playing and ensure pygame releases the file
-        while pygame.mixer.music.get_busy():
-            continue
+            # Stop the mixer and quit pygame to release resources
+            pygame.mixer.music.stop()
+            pygame.mixer.quit()
 
-        # Stop the mixer and release resources
-        pygame.mixer.music.stop()
-
-        # Retry deleting the file after ensuring no process is using it
-        if os.path.exists("translated_speech.mp3"):
-            try:
+            # Now it's safe to delete the file after the mixer has stopped
+            if os.path.exists("translated_speech.mp3"):
                 os.remove("translated_speech.mp3")
-            except PermissionError:
-                print("File is still in use. Retrying deletion in 2 seconds.")
-                pygame.time.wait(2000)  # Wait 2 seconds before trying again
-                os.remove("translated_speech.mp3")
-
+        else:
+            print("Error: pygame mixer could not be initialized.")
+            speak("Sorry, I cannot play the audio right now.")
         return translated_text
 
     except Exception as e:
         print(f"Error translating or pronouncing phrase: {e}")
         speak("Error translating or pronouncing the phrase. Please check your network or the language code.")
         return None
+
+# Function to ensure pygame mixer is initialized
+def init_pygame_mixer():
+    if not pygame.mixer.get_init():
+        try:
+            pygame.mixer.init()
+            print("pygame mixer initialized successfully.")
+        except Exception as mixer_error:
+            print(f"Error initializing pygame mixer: {mixer_error}")
+            return False
+    return True
