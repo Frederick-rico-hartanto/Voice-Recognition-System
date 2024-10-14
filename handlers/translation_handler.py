@@ -9,7 +9,7 @@ from gtts.lang import tts_langs
 
 # Print available languages for gTTS for reference
 available_gtts_langs = tts_langs()
-print("Available gTTS languages:", available_gtts_langs)
+# print("Available gTTS languages:", available_gtts_langs)
 
 # Initialize pygame for sound playing
 pygame.mixer.init()
