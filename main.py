@@ -17,7 +17,6 @@ from handlers.translation_handler import translate_phrase, extract_translation
 from handlers.open_apps import open_app
 from utils.math_solver import extract_equation, solve_math_equation
 
-
 # Function to check for wake word in the command
 def is_wake_word_detected(command):
     wake_words = ["hey bella", "okay bella"]
