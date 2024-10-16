@@ -74,13 +74,3 @@ def set_alarm_via_csharp(alarm_time):
         print(f"[ERROR] Failed to call C# executable: {e}")
         speak("I could not set the alarm due to an error.")
 
-# MAIN FUNCTION TO RUN THE SCRIPT
-def main():
-    # Example test command for setting a timer or alarm
-    test_command = "set alarm for 7:00 AM on Monday"  # Change this for different tests
-    print(f"[DEBUG] Running test with command: {test_command}")
-    
-    handle_alarm_timer(test_command)
-
-if __name__ == "__main__":
-    main()

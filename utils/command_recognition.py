@@ -1,3 +1,9 @@
+import sys
+import os
+
+# Ensure the parent directory is in the Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import speech_recognition as sr
 from utils.speak import speak
 
