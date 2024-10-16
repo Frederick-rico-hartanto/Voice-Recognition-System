@@ -1,8 +1,12 @@
 {
   "version": 2,
-  "dgSpecHash": "2n7vxbPv9rI=",
+  "dgSpecHash": "L2Ng3XAhH5w=",
   "success": true,
   "projectFilePath": "C:\\Users\\user\\Documents\\VRS\\cs_code\\ClockAutomation\\ClockAutomation.csproj",
-  "expectedPackageFiles": [],
+  "expectedPackageFiles": [
+    "C:\\Users\\user\\.nuget\\packages\\inputsimulator\\1.0.4\\inputsimulator.1.0.4.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\microsoft.netframework.referenceassemblies\\1.0.3\\microsoft.netframework.referenceassemblies.1.0.3.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\microsoft.netframework.referenceassemblies.net48\\1.0.3\\microsoft.netframework.referenceassemblies.net48.1.0.3.nupkg.sha512"
+  ],
   "logs": []
 }

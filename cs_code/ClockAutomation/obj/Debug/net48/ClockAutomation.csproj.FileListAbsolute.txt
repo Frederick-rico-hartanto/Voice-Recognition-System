@@ -1,0 +1,13 @@
+C:\Users\user\Documents\VRS\cs_code\ClockAutomation\obj\Debug\net48\ClockAutomation.csproj.AssemblyReference.cache
+C:\Users\user\Documents\VRS\cs_code\ClockAutomation\obj\Debug\net48\ClockAutomation.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\user\Documents\VRS\cs_code\ClockAutomation\obj\Debug\net48\ClockAutomation.AssemblyInfoInputs.cache
+C:\Users\user\Documents\VRS\cs_code\ClockAutomation\obj\Debug\net48\ClockAutomation.AssemblyInfo.cs
+C:\Users\user\Documents\VRS\cs_code\ClockAutomation\obj\Debug\net48\ClockAutomation.csproj.CoreCompileInputs.cache
+C:\Users\user\Documents\VRS\cs_code\ClockAutomation\obj\Debug\net48\ClockAutomation.sourcelink.json
+C:\Users\user\Documents\VRS\cs_code\ClockAutomation\bin\Debug\net48\ClockAutomation.exe.config
+C:\Users\user\Documents\VRS\cs_code\ClockAutomation\bin\Debug\net48\ClockAutomation.exe
+C:\Users\user\Documents\VRS\cs_code\ClockAutomation\bin\Debug\net48\ClockAutomation.pdb
+C:\Users\user\Documents\VRS\cs_code\ClockAutomation\obj\Debug\net48\ClockAutomation.exe
+C:\Users\user\Documents\VRS\cs_code\ClockAutomation\obj\Debug\net48\ClockAutomation.pdb
+C:\Users\user\Documents\VRS\cs_code\ClockAutomation\bin\Debug\net48\WindowsInput.dll
+C:\Users\user\Documents\VRS\cs_code\ClockAutomation\obj\Debug\net48\ClockAut.EA6D0361.Up2Date

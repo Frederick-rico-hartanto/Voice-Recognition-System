@@ -32,7 +32,7 @@ def set_timer_via_csharp(duration):
     """
     try:
         # Call the C# executable with timer duration (replace with actual path)
-        result = subprocess.run(["cs_code/ClockAutomation.exe", "timer", str(duration)], capture_output=True, text=True)
+        result = subprocess.run(["cs_code/ClockAutomation/bin/Debug/net8.0/ClockAutomation.exe", "timer", str(duration)], capture_output=True, text=True)
         
         # Print the output from the C# process (if any)
         print(result.stdout)
@@ -56,7 +56,7 @@ def set_alarm_via_csharp(alarm_time):
     """
     try:
         # Call the C# executable with alarm time (replace with actual path)
-        result = subprocess.run(["cs_code/ClockAutomation.exe", "alarm", str(alarm_time)], capture_output=True, text=True)
+        result = subprocess.run(["cs_code/ClockAutomation/bin/Debug/net8.0/ClockAutomation.exe", "alarm", str(alarm_time)], capture_output=True, text=True)
 
         # Print the output from the C# process (if any)
         print(result.stdout)
