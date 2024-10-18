@@ -45,7 +45,8 @@ class ClockAutomation
                 HandleTimer(clockWindow, timerDuration);
                 break;
             case "stopwatch":
-                HandleStopwatch(clockWindow);
+                string stopwatchAction = args.Length > 1 ? args[1].ToLower() : "start";
+                HandleStopwatch(clockWindow, stopwatchAction);
                 break;
             case "alarm":
                 if (alarmTime != null && alarmDay != null)
@@ -64,141 +65,267 @@ class ClockAutomation
     }
 
     // Handle setting a timer
-    static void HandleTimer(AutomationElement clockWindow, string duration)
+static void HandleTimer(AutomationElement clockWindow, string duration)
+{
+    // Step 1: Find and activate the Timer tab
+    AutomationElement timerTab = clockWindow.FindFirst(TreeScope.Descendants,
+        new PropertyCondition(AutomationElement.NameProperty, "Timer"));
+
+    if (timerTab == null)
     {
-        // Step 1: Find and activate the Timer tab
-        AutomationElement timerTab = clockWindow.FindFirst(TreeScope.Descendants,
-            new PropertyCondition(AutomationElement.NameProperty, "Timer"));
+        Console.WriteLine("Timer tab not found.");
+        return;
+    }
 
-        if (timerTab == null)
-        {
-            Console.WriteLine("Timer tab not found.");
-            return;
-        }
+    Console.WriteLine("Timer tab found, activating it...");
 
-        Console.WriteLine("Timer tab found, activating it...");
+    object patternObj;
+    // Try to select the tab (ExpandCollapse or Toggle if supported)
+    if (timerTab.TryGetCurrentPattern(ExpandCollapsePattern.Pattern, out patternObj))
+    {
+        ExpandCollapsePattern expandPattern = (ExpandCollapsePattern)patternObj;
+        expandPattern.Expand();
+        Console.WriteLine("Timer tab expanded using ExpandCollapsePattern.");
+    }
+    else if (timerTab.TryGetCurrentPattern(TogglePattern.Pattern, out patternObj))
+    {
+        TogglePattern togglePattern = (TogglePattern)patternObj;
+        togglePattern.Toggle();
+        Console.WriteLine("Timer tab toggled using TogglePattern.");
+    }
+    else
+    {
+        Console.WriteLine("The Timer tab does not support ExpandCollapsePattern or TogglePattern.");
+    }
 
-        object patternObj;
-        // Try to select the tab (ExpandCollapse or Toggle if supported)
-        if (timerTab.TryGetCurrentPattern(ExpandCollapsePattern.Pattern, out patternObj))
+    Thread.Sleep(1000);  // Wait for the UI to switch
+
+    // Step 2: Find and click the "Add new timer" button
+    AutomationElement addTimerButton = clockWindow.FindFirst(TreeScope.Descendants,
+        new PropertyCondition(AutomationElement.NameProperty, "Add new timer"));
+
+    if (addTimerButton != null)
+    {
+        Console.WriteLine("Add Timer button found, clicking it...");
+        if (addTimerButton.TryGetCurrentPattern(InvokePattern.Pattern, out patternObj))
         {
-            ExpandCollapsePattern expandPattern = (ExpandCollapsePattern)patternObj;
-            expandPattern.Expand();
-            Console.WriteLine("Timer tab expanded using ExpandCollapsePattern.");
-        }
-        else if (timerTab.TryGetCurrentPattern(TogglePattern.Pattern, out patternObj))
-        {
-            TogglePattern togglePattern = (TogglePattern)patternObj;
-            togglePattern.Toggle();
-            Console.WriteLine("Timer tab toggled using TogglePattern.");
+            InvokePattern invokeAddTimer = (InvokePattern)patternObj;
+            invokeAddTimer.Invoke();
         }
         else
         {
-            Console.WriteLine("The Timer tab does not support ExpandCollapsePattern or TogglePattern.");
+            Console.WriteLine("Add Timer button does not support InvokePattern.");
         }
+    }
+    else
+    {
+        Console.WriteLine("Failed to find the Add Timer button.");
+        return;
+    }
 
-        Thread.Sleep(1000);  // Wait for the UI to switch
+    Thread.Sleep(1000);  // Wait for the new timer dialog to appear
 
-        // Step 2: Stop any existing timer
-        AutomationElement stopTimerButton = clockWindow.FindFirst(TreeScope.Descendants,
-            new PropertyCondition(AutomationElement.NameProperty, "Stop"));
+    // Step 3: Set the new timer
+    Console.WriteLine($"Setting a new timer for {duration} (h:m:s).");
+    SimulateArrowKeyPressForDuration(duration);
 
-        if (stopTimerButton != null)
+    // Step 4: Save the timer
+    AutomationElement saveTimerButton = clockWindow.FindFirst(TreeScope.Descendants,
+        new PropertyCondition(AutomationElement.NameProperty, "Save"));
+
+    if (saveTimerButton != null)
+    {
+        Console.WriteLine("Saving the timer.");
+        if (saveTimerButton.TryGetCurrentPattern(InvokePattern.Pattern, out patternObj))
         {
-            Console.WriteLine("Existing timer found, stopping it...");
-            if (stopTimerButton.TryGetCurrentPattern(InvokePattern.Pattern, out patternObj))
-            {
-                InvokePattern invokeStopTimer = (InvokePattern)patternObj;
-                invokeStopTimer.Invoke();
-                Thread.Sleep(1000);  // Wait for the timer to stop
-            }
-            else
-            {
-                Console.WriteLine("Stop button does not support InvokePattern.");
-            }
-        }
-
-        // Step 3: Set the new timer
-        Console.WriteLine($"Setting a new timer for {duration} minutes.");
-        SimulateKeyPressForDuration(duration);
-
-        // Step 4: Start the timer
-        AutomationElement startTimerButton = clockWindow.FindFirst(TreeScope.Descendants,
-            new PropertyCondition(AutomationElement.NameProperty, "Start"));
-
-        if (startTimerButton != null)
-        {
-            Console.WriteLine($"Starting the {duration} minute timer.");
-            if (startTimerButton.TryGetCurrentPattern(InvokePattern.Pattern, out patternObj))
-            {
-                InvokePattern invokeStartTimer = (InvokePattern)patternObj;
-                invokeStartTimer.Invoke();
-            }
-            else
-            {
-                Console.WriteLine("Start button does not support InvokePattern.");
-            }
+            InvokePattern invokeSaveTimer = (InvokePattern)patternObj;
+            invokeSaveTimer.Invoke();
         }
         else
         {
-            Console.WriteLine("Failed to find the Start button.");
+            Console.WriteLine("Save button does not support InvokePattern.");
         }
     }
-
-    // Simulate keypresses to set the timer duration
-    static void SimulateKeyPressForDuration(string duration)
+    else
     {
-        Console.WriteLine($"Simulating key press to set the timer to {duration} minutes.");
-
-        var sim = new InputSimulator();
-
-        // Step 1: Simulate pressing TAB to focus on the timer duration field
-        sim.Keyboard.KeyPress(VirtualKeyCode.TAB);
-        Thread.Sleep(500);  // Wait for the UI to respond
-
-        // Step 2: Clear any existing input (use BACKSPACE or DELETE keys)
-        for (int i = 0; i < 5; i++)  // Assume the duration field has a max of 5 digits
-        {
-            sim.Keyboard.KeyPress(VirtualKeyCode.BACK);
-        }
-
-        // Step 3: Simulate typing the new duration
-        foreach (char digit in duration)
-        {
-            sim.Keyboard.TextEntry(digit);
-        }
-
-        Thread.Sleep(500);  // Wait a bit before starting the timer
-
-        // Step 4: Simulate pressing Enter to confirm and start the timer
-        sim.Keyboard.KeyPress(VirtualKeyCode.RETURN);
+        Console.WriteLine("Failed to find the Save button.");
+        return;
     }
+
+    Thread.Sleep(1000);  // Allow some time for the new timer to appear
+
+    // Step 5: Start the newly created timer
+    StartNewlyCreatedTimer(clockWindow);
+}
+
+// Simulate arrow key presses to set the timer duration
+static void SimulateArrowKeyPressForDuration(string duration)
+{
+    Console.WriteLine($"Simulating arrow key press to set the timer to {duration} (h:m:s).");
+
+    var sim = new InputSimulator();
+
+    // Split the duration into hours, minutes, and seconds
+    string[] timeParts = duration.Split(':');
+    int targetHours = timeParts.Length > 0 ? int.Parse(timeParts[0]) : 0;
+    int targetMinutes = timeParts.Length > 1 ? int.Parse(timeParts[1]) : 0;
+    int targetSeconds = timeParts.Length > 2 ? int.Parse(timeParts[2]) : 0;
+
+    // Step 1: Set the hours using arrow keys
+    AdjustTimerField(sim, 0, targetHours, "hours");
+
+    // Step 2: Tab to the minutes input
+    sim.Keyboard.KeyPress(VirtualKeyCode.TAB);
+    Thread.Sleep(500);
+
+    // Step 3: Set the minutes using arrow keys
+    AdjustTimerField(sim, 0, targetMinutes, "minutes");
+
+    // Step 4: Tab to the seconds input
+    sim.Keyboard.KeyPress(VirtualKeyCode.TAB);
+    Thread.Sleep(500);
+
+    // Step 5: Set the seconds using arrow keys
+    AdjustTimerField(sim, 0, targetSeconds, "seconds");
+
+    Console.WriteLine($"Timer set to {targetHours}:{targetMinutes}:{targetSeconds}.");
+}
+
+// Function to adjust hours, minutes, or seconds using the arrow keys
+static void AdjustTimerField(InputSimulator sim, int currentValue, int targetValue, string fieldName)
+{
+    Console.WriteLine($"Adjusting {fieldName} from {currentValue} to {targetValue}");
+
+    if (currentValue == targetValue)
+    {
+        Console.WriteLine($"{fieldName} is already set to {targetValue}.");
+        return;
+    }
+
+    while (currentValue != targetValue)
+    {
+        if (targetValue > currentValue)
+        {
+            sim.Keyboard.KeyPress(VirtualKeyCode.UP);  // Press up arrow to increase the value
+            currentValue++;
+        }
+        else
+        {
+            sim.Keyboard.KeyPress(VirtualKeyCode.DOWN);  // Press down arrow to decrease the value
+            currentValue--;
+        }
+        Thread.Sleep(300);  // Allow UI to update
+    }
+}
+
+// Function to find and start the most recently created timer
+static void StartNewlyCreatedTimer(AutomationElement clockWindow)
+{
+    // Find the most recent "Start" button
+    AutomationElementCollection startButtons = clockWindow.FindAll(TreeScope.Descendants,
+        new PropertyCondition(AutomationElement.NameProperty, "Start"));
+
+    if (startButtons.Count > 0)
+    {
+        // Assuming the last "Start" button belongs to the newly created timer
+        AutomationElement latestStartButton = startButtons[startButtons.Count - 1];
+
+        Console.WriteLine("Starting the newly created timer.");
+        if (latestStartButton.TryGetCurrentPattern(InvokePattern.Pattern, out object patternObj))
+        {
+            InvokePattern invokeStartTimer = (InvokePattern)patternObj;
+            invokeStartTimer.Invoke();
+        }
+        else
+        {
+            Console.WriteLine("Start button does not support InvokePattern.");
+        }
+    }
+    else
+    {
+        Console.WriteLine("Failed to find the Start button for the timer.");
+    }
+}
+
+
+
 
     // Handle the stopwatch feature
-    static void HandleStopwatch(AutomationElement clockWindow)
+static void HandleStopwatch(AutomationElement clockWindow, string action)
+{
+    // Step 1: Find the Stopwatch tab and click it
+    AutomationElement stopwatchTab = clockWindow.FindFirst(TreeScope.Descendants,
+        new PropertyCondition(AutomationElement.NameProperty, "Stopwatch"));
+
+    if (stopwatchTab == null)
     {
-        AutomationElement stopwatchTab = clockWindow.FindFirst(TreeScope.Descendants,
-            new PropertyCondition(AutomationElement.NameProperty, "Stopwatch"));
-
-        if (stopwatchTab == null)
-        {
-            Console.WriteLine("Stopwatch tab not found.");
-            return;
-        }
-
-        Console.WriteLine("Stopwatch tab found, activating it...");
-
-        object patternObj;
-        if (stopwatchTab.TryGetCurrentPattern(SelectionItemPattern.Pattern, out patternObj))
-        {
-            SelectionItemPattern selectStopwatch = (SelectionItemPattern)patternObj;
-            selectStopwatch.Select();
-        }
-        else
-        {
-            Console.WriteLine("The Stopwatch tab does not support SelectionItemPattern.");
-        }
+        Console.WriteLine("Stopwatch tab not found.");
+        return;
     }
+
+    Console.WriteLine("Stopwatch tab found, activating it...");
+
+    object patternObj;
+    if (stopwatchTab.TryGetCurrentPattern(SelectionItemPattern.Pattern, out patternObj))
+    {
+        SelectionItemPattern selectStopwatch = (SelectionItemPattern)patternObj;
+        selectStopwatch.Select();
+        Console.WriteLine("Stopwatch tab activated.");
+    }
+    else
+    {
+        Console.WriteLine("The Stopwatch tab does not support SelectionItemPattern.");
+        return;
+    }
+
+    Thread.Sleep(1000);  // Wait for the UI to switch
+
+    // Determine the action: Start, Pause, or Reset
+    string buttonName = null;
+    switch (action.ToLower())
+    {
+        case "start":
+            buttonName = "Start";
+            break;
+        case "pause":
+            buttonName = "Pause";
+            break;
+        case "reset":
+            buttonName = "Reset";
+            break;
+        default:
+            Console.WriteLine("Invalid action. Please use 'start', 'pause', or 'reset'.");
+            return;
+    }
+
+    // Step 2: Find the corresponding button based on the action
+    AutomationElement stopwatchButton = clockWindow.FindFirst(TreeScope.Descendants,
+        new PropertyCondition(AutomationElement.NameProperty, buttonName));
+
+    if (stopwatchButton == null)
+    {
+        Console.WriteLine($"{buttonName} button not found.");
+        return;
+    }
+
+    Console.WriteLine($"{buttonName} button found, attempting to {action} the stopwatch...");
+
+    // Step 3: Invoke the Start/Pause/Reset button
+    if (stopwatchButton.TryGetCurrentPattern(InvokePattern.Pattern, out patternObj))
+    {
+        InvokePattern invokeStopwatch = (InvokePattern)patternObj;
+        invokeStopwatch.Invoke();
+        Console.WriteLine($"Stopwatch {action}ed.");
+    }
+    else
+    {
+        Console.WriteLine($"{buttonName} button does not support InvokePattern.");
+    }
+}
+
+
+
+
 
     // Handle the alarm feature
 static void HandleAlarm(AutomationElement clockWindow, string time, string day)
